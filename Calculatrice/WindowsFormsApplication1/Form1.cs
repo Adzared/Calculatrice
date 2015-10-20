@@ -394,6 +394,7 @@ namespace WindowsFormsApplication1
                     if (nbParentheses > 0)  //Si on a une parenthèse ouverte
                     {
                         nbParentheses--;    //On peut la fermer
+                        if (racineEnCours) racineEnCours = false;
 
                         if (OpParentheses != null)  //Si l'opération entre parenthèses n'est pas null
                         {

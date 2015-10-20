@@ -14,7 +14,30 @@ namespace Calculatrice
         {
             base.calculerBranch();
 
-            resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation());
+            if (operandeB == null || operandeB is Valeur)
+                resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation());
+            else if (operandeB is Addition)
+                resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation()) + operandeB.calculerOperation();
+
+            else if (operandeB is Soustraction)
+                resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation()) - operandeB.calculerOperation();
+
+            else if (operandeB is Multiplication)
+                resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation()) * operandeB.calculerOperation();
+
+            else if (operandeB is Division)
+                try
+                {
+                    resultat = (decimal)Math.Sqrt((double)operandeA.calculerOperation()) / operandeB.calculerOperation();
+                }
+                catch (DivideByZeroException)
+                {
+                    return 0;
+                }
+            else if (operandeB is sqrt)
+                resultat = 0;
+
+            
             return resultat;
         }
     }

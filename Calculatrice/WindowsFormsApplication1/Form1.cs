@@ -22,6 +22,7 @@ namespace WindowsFormsApplication1
         public Operation OpParentheses;
         private Valeur val;
         bool enterPressed = false;
+        bool racineEnCours = false;
 
         public Form1()
         {
@@ -56,6 +57,9 @@ namespace WindowsFormsApplication1
             resultat.Text = "0";
             OperationEnCours = null;
             tronc = null;
+            OpParentheses = null;
+            troncParentheses = null;
+            nbParentheses = 0;
             enterPressed = false;
         }
 
@@ -75,24 +79,20 @@ namespace WindowsFormsApplication1
                 enterPressed = false;
             }
 
-            String text = ((Button)sender).Text; //On récupère le texte de l'opérateur clické
+            String text = ((Button)sender).Text; //On récupère le texte de l'opérateur 
 
-            if (text != "(" && text != ")") //Si ce n'est pas une parenthèses, alors on ajoute dans le libellé de l'opération la valeur saisie dans le champ résultat 
+            if (text != "(" && text != ")" && text != "sqrt")  //Si ce n'est pas une parenthèses ou une racine, alors on ajoute dans le libellé de l'opération la valeur saisie dans le champ résultat
             {
                 labelOperation.Text += resultat.Text;
-                if (resultat.Text != "")
+
+                if (text != "=") //Si c'est un opérateur de type + - * /, on l'ajoute également pour avoir "XVal+"
                 {
-                    try
+                    if (racineEnCours)
                     {
-                        val.valeur = Decimal.Parse(resultat.Text, System.Globalization.CultureInfo.InvariantCulture); //On ajoute la valeur saisie dans la variable val, en convertissant la virgule selon la langue du système
-                        //Pour éviter les problèmes avec les "." et les ","
+                        labelOperation.Text += ")";
+                        racineEnCours = false;
+                        nbParentheses--;
                     }
-                    catch (FormatException)
-                    {
-                    }
-                }
-                if (text != "=")    //Si c'est un opérateur de type + - * /, on l'ajoute également pour avoir "XVal+" 
-                {
                     labelOperation.Text += text;
                 }
             }
@@ -107,6 +107,19 @@ namespace WindowsFormsApplication1
             //    {
             //    }
             //}
+
+            if (resultat.Text != "")
+            {
+                try
+                {
+                    val.valeur = Decimal.Parse(resultat.Text, System.Globalization.CultureInfo.InvariantCulture); //On ajoute la valeur saisie dans la variable val, en convertissant la virgule selon la langue du système
+                    //Pour éviter les problèmes avec les "." et les ","
+                }
+                catch (FormatException)
+                {
+                    resultat.Text = "Erreur format saisie!";
+                }
+            }
 
             if (!val.valeur.HasValue)
             {
@@ -123,18 +136,23 @@ namespace WindowsFormsApplication1
                     {
                         if (OpParentheses != null)  //Si une opération est en cours dans les parenthèses
                         {
-                            OpParentheses.setOperandeB((decimal)val.valeur);    //On ajoute ajoute 
-                            if (OpParentheses != troncParentheses)
+                            if (OpParentheses is Soustraction)
                             {
-                                troncParentheses.setOperandeB(OpParentheses.Clone());
-                                OpParentheses = troncParentheses;
+                                add.setOperandeA((decimal)val.valeur);
+                                OpParentheses = add;
                             }
-                            add.setOperandeA(troncParentheses.Clone());
-                            OpParentheses = add;
-                            troncParentheses = OpParentheses;
-                            if (OperationEnCours.getOperandeA() == null)
+                            else
                             {
-                                OperationEnCours.setOperandeA(troncParentheses);
+                                if (OpParentheses.getOperandeB() == null)
+                                    OpParentheses.setOperandeB((decimal)val.valeur);    //On ajoute seulement si notre opération n'est pas complète (si on vient de fermer une parenthèse, l'opération est déjà remplie) 
+                                if (OpParentheses != troncParentheses)
+                                {
+                                    troncParentheses.setOperandeB(OpParentheses.Clone());
+                                    OpParentheses = troncParentheses;
+                                }
+                                add.setOperandeA(troncParentheses.Clone());
+                                OpParentheses = add;
+                                troncParentheses = OpParentheses;
                             }
                         }
                         else
@@ -149,7 +167,8 @@ namespace WindowsFormsApplication1
 
                         if (OperationEnCours != null)   //Si une opération est en cours
                         {
-                            OperationEnCours.setOperandeB((decimal)val.valeur); //on ajoute a l'opération en cours l'opérande tapée
+                            if (OperationEnCours.getOperandeB() == null)            //Si l'opérandeB n'a pas été remplie (cas d'un calcul sans parenthèses)
+                                OperationEnCours.setOperandeB((decimal)val.valeur); //on ajoute a l'opération en cours l'opérande tapée
                             if (OperationEnCours != tronc)  //Si l'opération en cours est avancée dans l'arbre des opérations
                             {
                                 tronc.setOperandeB(OperationEnCours.Clone());   //On ajoute l'opération en cours dans l'arbre
@@ -172,49 +191,61 @@ namespace WindowsFormsApplication1
                 case "-":
                     Operation sub = new Soustraction();
 
-                    if (nbParentheses != 0)
+                    if (nbParentheses != 0) //Si on a une parenthèse ouverte
                     {
-                        if (OpParentheses != null)
+                        if (OpParentheses != null)  //Si une opération est en cours dans les parenthèses
                         {
-                            OpParentheses.setOperandeB((decimal)val.valeur);
-                            if (OpParentheses != troncParentheses)
+                            if (OpParentheses is Soustraction)
                             {
-                                troncParentheses.setOperandeB(OpParentheses.Clone());
-                                OpParentheses = troncParentheses;
+                                sub.setOperandeA((decimal)val.valeur);
+                                OpParentheses = sub;
                             }
-                            sub.setOperandeA(troncParentheses.Clone());
-                            OpParentheses = sub;
-                            troncParentheses = OpParentheses;
+                            else
+                            {
+                                if (OpParentheses.getOperandeB() == null)
+                                    OpParentheses.setOperandeB((decimal)val.valeur);    //On ajoute seulement si notre opération n'est pas complète (si on vient de fermer une parenthèse, l'opération est déjà remplie) 
+
+                                if (OpParentheses != troncParentheses)
+                                {
+                                    troncParentheses.setOperandeB(OpParentheses.Clone());
+                                    OpParentheses = troncParentheses;
+                                }
+                                sub.setOperandeA(troncParentheses.Clone());
+                                OpParentheses = sub;
+                                troncParentheses = OpParentheses;
+                            }
                         }
                         else
                         {
                             sub.setOperandeA((decimal)val.valeur);
-                            OpParentheses = sub;
-                            troncParentheses = OpParentheses;
+                            troncParentheses = sub;
+                            OpParentheses = troncParentheses;
                         }
                     }
-                    else
+                    else    //Si on a pas de parenthèse ouverte
                     {
-                        if (OperationEnCours != null)
+
+                        if (OperationEnCours != null)   //Si une opération est en cours
                         {
-                            OperationEnCours.setOperandeB((decimal)val.valeur);
-                            if (OperationEnCours != tronc)
+                            if (OperationEnCours.getOperandeB() == null)            //Si l'opérandeB n'a pas été remplie (cas d'un calcul sans parenthèses)
+                                OperationEnCours.setOperandeB((decimal)val.valeur); //on ajoute a l'opération en cours l'opérande tapée
+                            if (OperationEnCours != tronc)  //Si l'opération en cours est avancée dans l'arbre des opérations
                             {
-                                tronc.setOperandeB(OperationEnCours.Clone());
-                                OperationEnCours = tronc;
+                                tronc.setOperandeB(OperationEnCours.Clone());   //On ajoute l'opération en cours dans l'arbre
                             }
-                            sub.setOperandeA(tronc.Clone());
-                            OperationEnCours = sub;
-                            tronc = OperationEnCours;
+                            sub.setOperandeA(tronc.Clone());    //On ajoute a l'opération tampon l'arbre
+                            OperationEnCours = sub;             //L'opération en cours devient la dernière opération de l'arbre
+                            tronc = OperationEnCours;           //On avance l'opération dans le tronc pour le calcul final
                         }
                         else
                         {
-                            sub.setOperandeA((decimal)val.valeur);
-                            tronc = sub;
-                            OperationEnCours = tronc;
+                            sub.setOperandeA((decimal)val.valeur);  //Si l'opération est null, on est dans une nouvelle opération
+                            OperationEnCours = sub; //L'opération en cours devient l'opération tampon
+                            tronc = OperationEnCours;   //On avance l'opération dans l'arbre
 
                         }
                     }
+
                     break;
 
                 case "*":
@@ -231,7 +262,8 @@ namespace WindowsFormsApplication1
                             }
                             else
                             {
-                                OpParentheses.setOperandeB((decimal)val.valeur);
+                                if (OperationEnCours.getOperandeB() == null)            //Si l'opérandeB n'a pas été remplie (cas d'un calcul sans parenthèses)
+                                    OperationEnCours.setOperandeB((decimal)val.valeur); //on ajoute a l'opération en cours l'opérande tapée
                                 if (OpParentheses != troncParentheses)
                                 {
                                     troncParentheses.setOperandeB(OpParentheses.Clone());
@@ -260,7 +292,8 @@ namespace WindowsFormsApplication1
                             }
                             else
                             {
-                                OperationEnCours.setOperandeB((decimal)val.valeur);
+                                if (OperationEnCours.getOperandeB() == null)            //Si l'opérandeB n'a pas été remplie (cas d'un calcul sans parenthèses)
+                                    OperationEnCours.setOperandeB((decimal)val.valeur); //on ajoute a l'opération en cours l'opérande tapée
                                 if (OperationEnCours != tronc)
                                 {
                                     tronc.setOperandeB(OperationEnCours.Clone());
@@ -282,7 +315,6 @@ namespace WindowsFormsApplication1
                     break;
 
                 case "/":
-
                     Operation div = new Division();
 
 
@@ -348,7 +380,10 @@ namespace WindowsFormsApplication1
                     break;
 
                 case "(":
-
+                    if (racineEnCours)
+                    {
+                        return;
+                    }
                     nbParentheses++;
                     labelOperation.Text += "(";
                         
@@ -362,9 +397,14 @@ namespace WindowsFormsApplication1
 
                         if (OpParentheses != null)  //Si l'opération entre parenthèses n'est pas null
                         {
-                            if ((val != null || val.valeur.HasValue))   //Si on a une valeur en cours de saisie
+                            if (labelOperation.Text[labelOperation.Text.Length-1].CompareTo(')') == 0)  //Si on a saisie une parenthèse fermante juste après une autre parenthèse fermante
                             {
-                                OpParentheses.setOperandeB((decimal)val.valeur);    //alors on peut la stocker dans l'opérandeB de l'opération en cours
+                                Addition tmp = new Addition(); tmp.setOperandeA(OpParentheses.Clone()); tmp.setOperandeB(new Valeur(0)); OpParentheses = tmp; val.valeur = null;
+                            }
+                            if ((val != null && val.valeur.HasValue))   //Si on a une valeur en cours de saisie
+                            {
+                                if (OpParentheses.getOperandeB() == null)
+                                    OpParentheses.setOperandeB((decimal)val.valeur);    //alors on peut la stocker dans l'opérandeB de l'opération en cours
                                 labelOperation.Text += resultat.Text;   //Et on l'ajoute au libellé de l'opération
                             }
 
@@ -373,12 +413,40 @@ namespace WindowsFormsApplication1
 
                                 if (nbParentheses == 0) //Si on vient de fermer la dernière parenthèse
                                 {
-                                    
-                                    if (troncParentheses.getOperandeB() == null)    //Si l'OperandeB de l'arbre n'est pas définie
-                                        troncParentheses.setOperandeB(OpParentheses.Clone());   //On y stock l'opération en cours
 
-                                    //OperationEnCours.setOperandeB(troncParentheses.Clone());
-                                    
+                                    //if (troncParentheses.getOperandeB() == null)    //Si l'OperandeB de l'arbre n'est pas définie
+                                    //    troncParentheses.setOperandeB(OpParentheses.Clone());   //On y stock l'opération en cours
+                                    if (OpParentheses != troncParentheses)
+                                    {
+                                        if (troncParentheses.getOperandeB() == null)
+                                        {
+                                            troncParentheses.setOperandeB(OpParentheses.Clone());
+                                            OpParentheses = troncParentheses;
+                                        }
+                                        else
+                                        {
+                                            troncParentheses = OpParentheses;
+                                        }
+                                    }
+
+                                    if (OperationEnCours != null) //Il faut remettre l'arbre des parenthèses dans l'arbre global
+                                    {
+                                        if (OperationEnCours.getOperandeB() == null)
+                                        {
+                                            OperationEnCours.setOperandeB(troncParentheses.Clone());
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        OperationEnCours = troncParentheses.Clone();
+                                        if (tronc == null)
+                                        {
+                                            tronc = OperationEnCours;
+                                        }
+                                    }
+                                    troncParentheses = null;
+                                    OpParentheses = null;
                                 }
                             }
                             else
@@ -401,8 +469,7 @@ namespace WindowsFormsApplication1
                                 tronc = OperationEnCours;
                             }
                         }
-                        troncParentheses = null;
-                        OpParentheses = null;
+                        //OpParentheses = null;
 
                         labelOperation.Text += ")";
                     }
@@ -411,48 +478,76 @@ namespace WindowsFormsApplication1
 
                 case "sqrt":
                     Operation sqrt = new sqrt();
-                    if (OperationEnCours is Addition || OperationEnCours is Soustraction)
-                    {
 
-                    }
-                    else
+                    if (val != null && val.valeur.HasValue)
                     {
-                    
+                        labelOperation.Text += "sqrt(" + val.valeur;
+                        nbParentheses++;
+                        racineEnCours = true;
+
+                        if (nbParentheses != 0) //Si on a une parenthèse ouverte
+                        {
+                            sqrt.setOperandeA((decimal)val.valeur);
+                            if (OpParentheses != null)  //Si une opération est en cours dans les parenthèses
+                            {
+                                if (OpParentheses.getOperandeB() == null)
+                                    OpParentheses.setOperandeB(sqrt);    //On ajoute seulement si notre opération n'est pas complète (si on vient de fermer une parenthèse, l'opération est déjà remplie) 
+
+                                if (OpParentheses != troncParentheses)
+                                {
+                                    troncParentheses.setOperandeB(OpParentheses.Clone());
+                                    OpParentheses = troncParentheses;
+                                }
+                            }
+                            else
+                            {
+                                troncParentheses = sqrt;
+                                OpParentheses = troncParentheses;
+                            }
+                        }
+   
                     }
 
                     break;
+
                 case "=":
                     if (nbParentheses != 0)
                     {
                         resultat.Text = "Parenthesis!";
                         return;
                     }
-                    if (OperationEnCours != null && tronc.getOperandeA() != null)
+                    if (tronc != null)
                     {
-                        if (OperationEnCours.getOperandeB() == null)
+                        if (OperationEnCours != null && tronc.getOperandeA() != null)
                         {
-                            OperationEnCours.setOperandeB((decimal)val.valeur);
+                            if (OperationEnCours.getOperandeB() == null)
+                            {
+                                OperationEnCours.setOperandeB((decimal)val.valeur);
+                            }
+
+                            if (OperationEnCours != tronc)
+                            {
+                                tronc.setOperandeB(OperationEnCours.Clone());
+                                OperationEnCours = tronc;
+                            }
+                            resultat.Text = tronc.calculerOperation().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            val.valeur = null;
+                            tronc.setOperandeA(tronc.Clone());
+                        }
+                        else
+                        {
+                            if (val.valeur.HasValue)
+                                resultat.Text = val.valeur.ToString();
                         }
 
-                        if (OperationEnCours != tronc)
-                        {
-                            tronc.setOperandeB(OperationEnCours.Clone());
-                            OperationEnCours = tronc;
-                        }
-                        resultat.Text = tronc.calculerOperation().ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        val.valeur = null;
-                        tronc.setOperandeA(tronc.Clone());
-                    }
-                    else
-                    {
-                        if (val.valeur.HasValue)
-                            resultat.Text = val.valeur.ToString();
+                        OperationEnCours = null;
+                        enterPressed = true;
+                        if (racineEnCours) racineEnCours = false;
+
+                        return;
                     }
 
-                    OperationEnCours = null;
-                    enterPressed = true;
-                    
-                    return;
+                    break;
             }
             resultat.Clear();
             val.valeur = null;
